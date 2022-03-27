@@ -16,9 +16,16 @@
 
 unsigned long prevMillis = 0;	// Used for timer thin
 unsigned long curMillis = 0;
-int catPos =  0;
-bool catWay = true;
-bool newFrame = false;
+unsigned long lastActionMillis = 0;
+
+int catXPos =  0;		 // Current cat X position
+bool catWay = true;		 // True mean right , false mean left
+int catState = 0;		 // Current state of the cat
+
+unsigned long lastAction = 0;	// Time since a last action was done
+int lastActionLenght = 5000;
+
+bool newFrame = false;	// If yes or no a new frame is needed
 
 
 #define XPOS   0 // Indexes into the 'icons' array in function below
@@ -469,10 +476,10 @@ static void LeftToRight(void)
 	{
 		prevMillis = millis();
 		display.clearDisplay();
-		display.drawBitmap(catPos, 1, cat_right, 60, 60, 1);
+		display.drawBitmap(catXPos, 1, cat_right, 60, 60, 1);
 		display.display();
-		catPos++;
-		if (catPos > 68)
+		catXPos++;
+		if (catXPos > 68)
 		{
 			catWay = false;
 		}
@@ -480,10 +487,10 @@ static void LeftToRight(void)
 	{
 		prevMillis = millis();
 		display.clearDisplay();
-		display.drawBitmap(catPos, 1, cat_left, 60, 60, 1);
+		display.drawBitmap(catXPos, 1, cat_left, 60, 60, 1);
 		display.display();
-		catPos--;
-		if (catPos <= 0)
+		catXPos--;
+		if (catXPos <= 0)
 		{
 			catWay = true;
 		}
@@ -561,54 +568,9 @@ void setup() {
   display.display();
   delay(2000); // Pause for 2 seconds
 
-  // Clear the buffer
-  //display.clearDisplay();
+  // ==== Variable setup =====
+  catXPos = 35;		// Set the initial cat position on the screen
 
-  // Draw a single pixel in white
-  //display.drawPixel(10, 10, WHITE);
-
-  // Show the display buffer on the screen. You MUST call display() after
-  // drawing commands to make them visible on screen!
-  //display.display();
-  //delay(2000);
-  // display.display() is NOT necessary after every single drawing command,
-  // unless that's what you want...rather, you can batch up a bunch of
-  // drawing operations and then update the screen all at once by calling
-  // display.display(). These examples demonstrate both approaches...
-
-  //testdrawline();      // Draw many lines
-
-  //testdrawrect();      // Draw rectangles (outlines)
-
-  //testfillrect();      // Draw rectangles (filled)
-
-  //testdrawcircle();    // Draw circles (outlines)
-
- // testfillcircle();    // Draw circles (filled)
-
-//  testdrawroundrect(); // Draw rounded rectangles (outlines)
-
-  //testfillroundrect(); // Draw rounded rectangles (filled)
-
- // testdrawtriangle();  // Draw triangles (outlines)
-
- // testfilltriangle();  // Draw triangles (filled)
-
- // testdrawchar();      // Draw characters of the default font
-
- // testdrawstyles();    // Draw 'stylized' characters
-
- // testscrolltext();    // Draw scrolling text
-
-  //testdrawbitmap();    // Draw a small bitmap image
-
-  // Invert and restore display, pausing in-between
-  //display.invertDisplay(true);
-  //delay(1000);
- //// display.invertDisplay(false);
-  delay(1000);
-
-  //testanimate(logo_bmp, LOGO_WIDTH, LOGO_HEIGHT); // Animate bitmaps
 }
 
 
@@ -619,6 +581,19 @@ void loop()
 {
 	curMillis = millis();
 	
-	LeftToRight();
+	
+
+	if (lastAction >= lastActionLenght)
+	{
+		LeftToRight();
+	}else
+	{
+		display.clearDisplay();
+		display.drawBitmap(catXPos, 1, cat_happy, 60, 60, 1);
+		display.display();
+	}
+	
+	
+	lastAction = lastAction + (millis() - curMillis); 
 
 }
