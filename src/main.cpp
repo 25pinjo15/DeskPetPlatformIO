@@ -24,15 +24,21 @@ unsigned long curMillis = 0; // Current time at start of cycle
 
 
 */
+
+// 88888888888888888888 DEBUGER ON / OFF
+bool DEBUGER = true;
+
 // ==== Display variable ====
 unsigned long frameMillis = 0; // Used for timer thing
 
 // ==== Cat related stuff ====
-int catXPos = 0;	// Current cat X position
-#define catYPOS 19 // Cat y position . but now it still since the sprite take the entire screen
-bool catWay = true; // True mean right , false mean left when moving 
-int catState = 1;	// Current state of the cat
-byte catMoving = 0; /* Is the cat is moving 0=no 1=yes(left to right slowly) */
+int catXPos = 0;		// Current cat X position
+#define catYPOS 19 		// Cat y position . but now it still since the sprite take the entire screen
+bool catWay = true; 	// True mean right , false mean left when moving 
+int catState = 1;		// Current state of the cat
+byte catMoving = 0;		 /* Is the cat is moving 0=no 1=yes(left to right slowly) */
+int catHunger = 0;		// How much the cat is hungry . 1000 mean full , 0 starving AF
+int catHappiness = 0;	// How much the cat is happy , 1000 happy AF 0 Depressed AF
 
 unsigned long lastActionSince = 0; // Time since a last action was done on cat
 unsigned long lastAction = 0;
@@ -231,6 +237,26 @@ const unsigned char PROGMEM cat_sick [] = {
 	0x7e, 0x00, 0x00, 0x00, 0x00, 0x3c, 0x00, 0x00
 };
 
+// ==== Icon Sprite ====
+
+#define ICON_HEIGHT 12		// Size of the icon
+#define ICON_WIDTH 12
+
+#define HungerXPos 2		// Top left corner
+#define HungerYPos 2
+#define HapinessXpos 48		// Just after hunger in the top bar
+#define HapinessYpos 2
+
+// 'icon_hapiness', 12x12px
+const unsigned char PROGMEM icon_happiness [] = {
+	0x00, 0x00, 0x00, 0x00, 0x30, 0xc0, 0x30, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x40, 0x20, 0x20, 0x40, 0x1f, 0x80, 0x00, 0x00
+};
+// 'icon_hunger', 12x12px
+const unsigned char PROGMEM icon_hunger [] = {
+	0x01, 0x00, 0x02, 0x00, 0x7b, 0x80, 0x86, 0x80, 0x80, 0xc0, 0x80, 0x70, 0x80, 0x10, 0x80, 0x10, 
+	0x80, 0x10, 0x40, 0x20, 0x26, 0x40, 0x19, 0x80
+};
 
 //######## All Function start
 
@@ -252,8 +278,11 @@ void meow2()
 	playTone(5100, 55);			   // "m" (short)
 	playTone(394, 170);			   // "eee" (long)
 	delay(30);					   // wait a tiny bit
-	for (i = 330; i < 360; i += 2) // vary "ooo" down
+	for (i = 330; i < 360; i += 2)
+	{
+	 // vary "ooo" down
 		playTone(i, 10);
+	}
 	playTone(5100, 40); // "w" (short)
 }
 
@@ -320,8 +349,19 @@ static void RefreshDisplay(void)
 		display.clearDisplay();
 
 		// ---- Update the gui
+		/*The hunger gauge is from 15 to 47 (including contour) to have a 30px gauge
+		The happiness gauge is from 61 to 93 (including contour to have a 30px gauge*/
+		
 		display.drawRect(0,0,128,16,1);		// Draw the top rectangle
 		display.drawRect(0,16,128,48,1);	// Draw the botom rectangle
+		display.drawRect(15,2,32,12,1);		// Draw the hunger gauge contour
+		display.fillRect(16,3,map(catHappiness,0,1000,0,30),10,1);
+		display.drawRect(61,2,32,12,1);		// Draw the Happiness gauge contour
+		display.fillRect(62,3,map(catHunger,0,1000,0,30),10,1);
+
+		display.drawBitmap(HungerXPos, HungerYPos, icon_hunger, ICON_HEIGHT, ICON_WIDTH, 1);	// Put the hunger icon
+		display.drawBitmap(HapinessXpos, HapinessYpos, icon_happiness, ICON_HEIGHT, ICON_WIDTH, 1); // Put the happiness icon
+
 
 		// ---- Update our cat
 
@@ -379,7 +419,7 @@ static void RefreshDisplay(void)
 		default:
 			break;
 		}
-
+		// ---- Final draw ! 
 		display.display();		// Finally we draw everything
 
 	}
@@ -481,7 +521,20 @@ static void Mood()
 
 void setup()
 {
-	Serial.begin(115200);
+
+	// Value for testing 
+	catHappiness = 500;
+	catHunger = 750;
+
+
+
+	
+	if (DEBUGER == true)
+	{
+		Serial.begin(115200);
+	}
+	
+	
 
 	// SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
 	if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
@@ -556,21 +609,28 @@ void loop()
 
 	HandState();
 
+
+
+
 	// DEBUGER:
-	Serial.print("Hand millis: ");
-	Serial.print(curMillis - handMillis);
-	Serial.print("Hand State: ");
-	Serial.print(handState);
-	Serial.print(" Cat State: ");
-	Serial.print(catState);
-	Serial.print(" frame time: ");
-	Serial.print(curMillis - frameMillis);
-	Serial.print(" Distance: ");
-	Serial.print(handDistance);
-	Serial.print("  Duration: ");
-	Serial.print(handActionDuration);
-	Serial.print("  Last action since: ");
-	Serial.println(lastActionSince);
+
+	if (DEBUGER == true)
+	{
+		Serial.print("Hand millis: ");
+		Serial.print(curMillis - handMillis);
+		Serial.print("Hand State: ");
+		Serial.print(handState);
+		Serial.print(" Cat State: ");
+		Serial.print(catState);
+		Serial.print(" frame time: ");
+		Serial.print(curMillis - frameMillis);
+		Serial.print(" Distance: ");
+		Serial.print(handDistance);
+		Serial.print("  Duration: ");
+		Serial.print(handActionDuration);
+		Serial.print("  Last action since: ");
+		Serial.println(lastActionSince);
+	}
 }
 
 //88888888 Loop End
