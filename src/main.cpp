@@ -30,6 +30,7 @@ bool DEBUGER = true;
 
 // ==== Display variable ====
 unsigned long frameMillis = 0; // Used for timer thing
+bool menuShowing = 0;
 
 // ==== Cat related stuff ====
 int catXPos = 0;		// Current cat X position
@@ -69,10 +70,36 @@ bool handPresent = false;
 unsigned long handMillis = 0;
 
 // ==== Button related stuff ====
-#define buttonLeft = 10;    // the number of the pushbutton pin
-#define buttonRight = 9;
-#define buttonSelect = 8;
-#define buttonBack = 7;
+
+long lastDebounceTime = 0;
+#define DEBOUNCE_DELAY 50
+
+#define buttonPinPet 10			// the number of the pushbutton pin
+byte buttonPetState;			// Button event pressed
+byte buttonPetPressed;			// To read the physical button
+byte lastButtonPetPressed;		// For button detection and debounce
+
+#define buttonPinFeed 9			// the number of the pushbutton pin
+byte buttonFeedState;			// Button event pressed
+byte buttonFeedPressed;			// To read the physical button
+byte lastButtonFeedPressed;		// For button detection and debounce
+
+#define buttonPinTreat 8		// the number of the pushbutton pin
+byte buttonTreatState;			// Button event pressed
+byte buttonTreatPressed;		// To read the physical button
+byte lastButtonTreatPressed;	// For button detection and debounce
+
+#define buttonPinPlay 7			// the number of the pushbutton pin
+byte buttonPlayState;			// Button event pressed
+byte buttonPlayPressed;			// To read the physical button
+byte lastButtonPlayPressed;		// For button detection and debounce
+
+
+
+
+	
+	
+	
 
 // ==== LCD Related stuff ====
 
@@ -288,7 +315,6 @@ void meow2()
 
 void mew()
 { // cat mew
-	uint16_t i;
 	playTone(5100, 55); // "m"   (short)
 	playTone(394, 130); // "eee" (long)
 	playTone(384, 35);	// "eee" (up a tiny bit on end)
@@ -352,16 +378,20 @@ static void RefreshDisplay(void)
 		/*The hunger gauge is from 15 to 47 (including contour) to have a 30px gauge
 		The happiness gauge is from 61 to 93 (including contour to have a 30px gauge*/
 		
-		display.drawRect(0,0,128,16,1);		// Draw the top rectangle
-		display.drawRect(0,16,128,48,1);	// Draw the botom rectangle
-		display.drawRect(15,2,32,12,1);		// Draw the hunger gauge contour
-		display.fillRect(16,3,map(catHappiness,0,1000,0,30),10,1);
-		display.drawRect(61,2,32,12,1);		// Draw the Happiness gauge contour
-		display.fillRect(62,3,map(catHunger,0,1000,0,30),10,1);
+		display.drawRect(0,0,128,16,1);									// Draw the top rectangle
+		display.drawRect(0,16,128,48,1);								// Draw the botom rectangle
+		
+		// If menu value is false will display the HUD
+		if (menuShowing == false)
+		{
+			display.drawRect(15, 2, 32, 12, 1);								   // Draw the hunger gauge contour
+			display.fillRect(16, 3, map(catHappiness, 0, 1000, 0, 30), 10, 1); // Fill the gauge with the value
+			display.drawRect(61, 2, 32, 12, 1);								   // Draw the Happiness gauge contour
+			display.fillRect(62, 3, map(catHunger, 0, 1000, 0, 30), 10, 1);	   // Fill the gauge with the value
 
-		display.drawBitmap(HungerXPos, HungerYPos, icon_hunger, ICON_HEIGHT, ICON_WIDTH, 1);	// Put the hunger icon
-		display.drawBitmap(HapinessXpos, HapinessYpos, icon_happiness, ICON_HEIGHT, ICON_WIDTH, 1); // Put the happiness icon
-
+			display.drawBitmap(HungerXPos, HungerYPos, icon_hunger, ICON_HEIGHT, ICON_WIDTH, 1);		// Put the hunger icon
+			display.drawBitmap(HapinessXpos, HapinessYpos, icon_happiness, ICON_HEIGHT, ICON_WIDTH, 1); // Put the happiness icon
+		} // Future else for menu 
 
 		// ---- Update our cat
 
@@ -481,39 +511,83 @@ static void HandState(void)
 
 // Will set the variable for the mood of the cat
 static void Mood()
+{
+	if (handState == 1)
 	{
-		if (handState == 1)
-		{
-			catState = 3;
-		}else if (handState == 2)
-		{
-			catState = 4;
-		}
-		
-		
-
-		switch (catState)
-		{
-		case 1:
-			catMoving = 0;
-			break;
-		case 2:
-			catMoving = 1;
-			break;
-		case 3:
-			catMoving = 0;
-			break;
-		case 4:
-			catMoving = 0;
-			break;
-		case 5:
-			catMoving = 0;
-			break;
-		
-		default:
-			break;
-		}
+		catState = 3;
 	}
+	else if (handState == 2)
+	{
+		catState = 4;
+	}
+
+	switch (catState)
+	{
+	case 1:
+		catMoving = 0;
+		break;
+	case 2:
+		catMoving = 1;
+		break;
+	case 3:
+		catMoving = 0;
+		break;
+	case 4:
+		catMoving = 0;
+		break;
+	case 5:
+		catMoving = 0;
+		break;
+
+	default:
+		break;
+	}
+}
+
+static void Input()
+{
+		// beware for now action is done twice, once pressed and once released
+	
+	buttonPetPressed = digitalRead(buttonPinPet);		// Read the hardware button
+	buttonFeedPressed = digitalRead(buttonPinFeed);		// Read the hardware button
+	buttonTreatPressed = digitalRead(buttonPinTreat);	// Read the hardware button
+	buttonPlayPressed = digitalRead(buttonPinTreat);	// Read the hardware button
+
+	if (buttonPetPressed != lastButtonPetPressed) lastDebounceTime = curMillis;			// Resset the timer
+	if (buttonFeedPressed != lastButtonFeedPressed) lastDebounceTime = curMillis;		// Resset the timer
+	if (buttonTreatPressed != lastButtonTreatPressed) lastDebounceTime = curMillis;		// Resset the timer
+	if (buttonPlayPressed != lastButtonPlayPressed) lastDebounceTime = curMillis;		// Resset the timer
+
+
+	if ((millis() - lastDebounceTime) > DEBOUNCE_DELAY)				// If the timer for debouce is meet , an action will be done per button
+	{
+		if (buttonPetPressed != buttonPetState)
+		{
+			buttonPetState = buttonPetPressed;
+			catHappiness = catHappiness + 25;
+			
+		}
+		if (buttonFeedPressed != buttonFeedState)
+		{
+			buttonFeedState = buttonFeedPressed;
+		}
+		if (buttonTreatPressed != buttonTreatState)
+		{
+			buttonTreatState = buttonTreatPressed;
+		}
+		if (buttonPlayPressed != buttonPlayState)
+		{
+			buttonPlayState = lastButtonTreatPressed;
+		}
+
+		
+		
+	}
+	lastButtonPetPressed = buttonPetPressed;		// Set the variable to the reading of the button
+	lastButtonFeedPressed = buttonFeedPressed;
+	lastButtonTreatPressed = buttonTreatPressed;
+	lastButtonPlayPressed = buttonPlayPressed;
+}
 
 // 88888888 All Function end
 
@@ -521,7 +595,14 @@ static void Mood()
 
 void setup()
 {
-
+	// Input pin setup to all input and integrated pull up to on
+	pinMode(buttonPinPet, INPUT_PULLUP);
+	pinMode(buttonPinFeed, INPUT_PULLUP);
+	pinMode(buttonPinTreat, INPUT_PULLUP);
+	pinMode(buttonPinPlay, INPUT_PULLUP);
+	
+	
+	
 	// Value for testing 
 	catHappiness = 500;
 	catHunger = 750;
@@ -578,6 +659,7 @@ void loop()
 
 	Mood();
 	RefreshDisplay();
+	Input();
 
 	// Will put the cat in wandering mode if no action is done .
 	if (lastActionSince >= lastActionLenght)
@@ -608,6 +690,10 @@ void loop()
 	lastActionSince = millis() - lastAction;
 
 	HandState();
+	
+
+	
+
 
 
 
@@ -616,10 +702,14 @@ void loop()
 
 	if (DEBUGER == true)
 	{
-		Serial.print("Hand millis: ");
-		Serial.print(curMillis - handMillis);
-		Serial.print("Hand State: ");
-		Serial.print(handState);
+		Serial.print("Last debounce time :");
+		Serial.print(lastDebounceTime);
+		Serial.print(" button pet state :");
+		Serial.print(buttonPetState);
+		Serial.print(" last button pet :");
+		Serial.print(lastButtonPetPressed);
+		Serial.print(" button pet pressed :");
+		Serial.print(buttonPetPressed);
 		Serial.print(" Cat State: ");
 		Serial.print(catState);
 		Serial.print(" frame time: ");
